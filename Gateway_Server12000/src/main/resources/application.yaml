@@ -1,0 +1,53 @@
+server:
+  port: 12000
+eureka:
+  instance:
+    prefer-ip-address: true
+    instance-id: "gateway-serve01"
+    #    instance-id: ${spring.cloud.client.ip-address}:
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 15
+  client:
+    service-url:
+      defaultZone: "http://eurekaServer18000:18000/eureka/,http://eurekaServer18001:18001/eureka/"
+spring:
+  application:
+    name: "gateway_server"
+  cloud:
+    gateway:
+      routes:
+      - id: customerService
+        uri: lb://consume-serve
+        predicates:
+          - Path=/cart/getUserById/**
+        filters:
+          - name: CircuitBreaker
+            args:
+              name: backendA
+              fallbackuri: "forward:/fallback"
+      - id: productService
+        uri: lb://provide-serve
+        predicates:
+          - Path=/user/getUserById/**
+    globalcors:
+      corsConfigurations:
+        '[/**]':
+          
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        failure-rate-threshold: 30
+        minimum-number-of-calls: 1
+        sliding-window-type: TIME_BASED
+        sliding-window-size: 10
+        automatic-transition-from-open-to-half-open-enabled: true
+        wait-duration-in-open-state:
+          2s
+        permitted-number-of-calls-in-half-open-state: 3
+        record-exceptions:
+          - java.lang.Exception
+    
+    instances:
+      backendA:
+        base-config: default
